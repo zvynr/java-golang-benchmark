@@ -1,0 +1,231 @@
+# ==============================================================================
+# Enterprise-Grade Docker Compose Configuration
+# Java 21 JVM vs GraalVM Native 21 vs Go High-Performance Benchmark Suite
+# ==============================================================================
+
+services:
+  postgres:
+    image: postgres:16.15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-benchmark}
+      POSTGRES_USER: ${POSTGRES_USER:-benchmark}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-benchmark}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-benchmark} -d ${POSTGRES_DB:-benchmark}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - benchmark-net
+
+  app-jvm:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.jvm21
+    container_name: benchmark-jvm
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_THREADS_VIRTUAL_ENABLED: "true"
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-benchmark}
+      DB_USER: ${DB_USER:-benchmark}
+      DB_PASSWORD: ${DB_PASSWORD:-benchmark}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+    networks:
+      - benchmark-net
+    profiles:
+      - jvm
+
+  app-native:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.native21
+    container_name: benchmark-native
+    entrypoint: ["/app/benchmark-native", "-Xms350m", "-Xmx350m", "-XX:+PrintGC"]
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_THREADS_VIRTUAL_ENABLED: "true"
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-benchmark}
+      DB_USER: ${DB_USER:-benchmark}
+      DB_PASSWORD: ${DB_PASSWORD:-benchmark}
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+    networks:
+      - benchmark-net
+    profiles:
+      - native
+
+  app-go:
+    build:
+      context: ./app-go
+      dockerfile: Dockerfile.go
+    container_name: benchmark-go
+    environment:
+      GOMAXPROCS: ${GOMAXPROCS:-2}
+      GOMEMLIMIT: ${GOMEMLIMIT:-1000MiB}
+      GOGC: ${GOGC:-800}
+      GIN_MODE: ${GIN_MODE:-release}
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-benchmark}
+      DB_USER: ${DB_USER:-benchmark}
+      DB_PASSWORD: ${DB_PASSWORD:-benchmark}
+      DB_MAX_OPEN: ${DB_MAX_OPEN:-20}
+      DB_MAX_IDLE: ${DB_MAX_IDLE:-5}
+    ports:
+      - "8082:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+    networks:
+      - benchmark-net
+    profiles:
+      - go
+
+  # ── k6 load generator ──────────────────────────────────────────────────────
+  k6:
+    image: grafana/k6:0.54.0
+    volumes:
+      - ./k6:/scripts:ro
+      - ./results:/results
+    environment:
+      BASE_URL: ${BASE_URL:-http://app-jvm:8080}
+      VU: ${VU:-10}
+    networks:
+      - benchmark-net
+    profiles:
+      - k6
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+      - "--web.enable-remote-write-receiver"
+    ports:
+      - "9090:9090"
+    networks:
+      - benchmark-net
+    profiles:
+      - monitoring
+
+  renderer:
+    image: grafana/grafana-image-renderer:latest
+    environment:
+      - ENABLE_METRICS=true
+    networks:
+      - benchmark-net
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana-oss:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: ${GF_USERS_ALLOW_SIGN_UP:-false}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/jvm-vs-native.json
+      GF_RENDERING_SERVER_URL: http://renderer:8081/render
+      GF_RENDERING_CALLBACK_URL: http://grafana:3000/
+      GF_LOG_FILTERS: rendering:debug
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - renderer
+    networks:
+      - benchmark-net
+    profiles:
+      - monitoring
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    container_name: benchmark-promtail
+    command: -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ./monitoring/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtaildata:/tmp
+    ports:
+      - "9080:9080"
+    networks:
+      - benchmark-net
+    profiles:
+      - monitoring
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    privileged: true
+    cgroup: host
+    pid: host
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    command:
+      - "--docker=unix:///var/run/docker.sock"
+      - "--docker_only=true"
+      - "--housekeeping_interval=5s"
+      - "--store_container_labels=false"
+      - "--whitelisted_container_labels=com.docker.compose.service"
+    ports:
+      - "8088:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys:/sys:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - benchmark-net
+    profiles:
+      - monitoring
+
+networks:
+  benchmark-net:
+    external: true
+
+volumes:
+  promdata:
+  grafanadata:
+  promtaildata:
+  pgdata:
+    external: true

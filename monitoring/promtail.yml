@@ -1,0 +1,69 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://prometheus:9090/api/v1/write
+
+scrape_configs:
+  - job_name: docker-native17-gc
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 2s
+        filters:
+          - name: name
+            values: ["benchmark-native"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+    pipeline_stages:
+      - regex:
+          expression: ".*, (?P<pause_sec>\\d+(\\.\\d+)?) secs.*"
+      - metrics:
+          native_gc_pause_seconds_sum:
+            type: Counter
+            description: "Total Native GC pause time in seconds"
+            source: pause_sec
+            config:
+              action: add
+          native_gc_pause_seconds_count:
+            type: Counter
+            description: "Total Native GC pause events count"
+            source: pause_sec
+            config:
+              action: inc
+
+  - job_name: docker-native21-gc
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 2s
+        filters:
+          - name: name
+            values: ["benchmark-native21"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+    pipeline_stages:
+      - regex:
+          expression: ".*\\s+(?P<pause_ms>\\d+(\\.\\d+)?)ms$"
+      - template:
+          source: pause_sec
+          template: '{{ divf .pause_ms 1000.0 }}'
+      - metrics:
+          native_gc_pause_seconds_sum:
+            type: Counter
+            description: "Total Native GC pause time in seconds"
+            source: pause_sec
+            config:
+              action: add
+          native_gc_pause_seconds_count:
+            type: Counter
+            description: "Total Native GC pause events count"
+            source: pause_sec
+            config:
+              action: inc

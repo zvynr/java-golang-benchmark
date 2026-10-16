@@ -1,0 +1,115 @@
+{
+  "uid": "jvm-vs-native-details",
+  "title": "JVM vs Native Benchmark - GC, DB Pool & Threads",
+  "tags": ["benchmark", "details", "gc", "db", "threads"],
+  "timezone": "Asia/Jakarta",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 102, "type": "row", "title": "Garbage Collection & Memory Allocation",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 21, "type": "timeseries", "title": "GC Pause Duration Rate (s/s)",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(jvm_gc_pause_seconds_sum{runtime=\"jvm\"}[30s])) or vector(0)", "legendFormat": "JVM 17 G1GC Pause Rate", "refId": "A" },
+        { "expr": "sum(rate(promtail_custom_native_gc_pause_seconds_sum{container=\"benchmark-native\"}[30s])) or sum(rate(jvm_gc_pause_seconds_sum{runtime=\"native\"}[30s])) or vector(0)", "legendFormat": "Native 17 Serial GC Pause Rate", "refId": "B" },
+        { "expr": "sum(rate(jvm_gc_pause_seconds_sum{runtime=\"go\"}[30s])) or vector(0)", "legendFormat": "Go GC Pause Rate", "refId": "C" },
+        { "expr": "sum(rate(jvm_gc_pause_seconds_sum{runtime=\"jvm21\"}[30s])) or vector(0)", "legendFormat": "JVM 21 G1GC Pause Rate", "refId": "D" },
+        { "expr": "sum(rate(promtail_custom_native_gc_pause_seconds_sum{container=\"benchmark-native21\"}[30s])) or sum(rate(jvm_gc_pause_seconds_sum{runtime=\"native21\"}[30s])) or vector(0)", "legendFormat": "Native 21 GC Pause Rate", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 } } }
+    },
+    {
+      "id": 22, "type": "timeseries", "title": "GC Pause Frequency (pauses/s)",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(jvm_gc_pause_seconds_count{runtime=\"jvm\"}[30s])) or vector(0)", "legendFormat": "JVM 17 G1GC Frequency", "refId": "A" },
+        { "expr": "sum(rate(promtail_custom_native_gc_pause_seconds_count{container=\"benchmark-native\"}[30s])) or sum(rate(jvm_gc_pause_seconds_count{runtime=\"native\"}[30s])) or vector(0)", "legendFormat": "Native 17 Serial GC Frequency", "refId": "B" },
+        { "expr": "sum(rate(jvm_gc_pause_seconds_count{runtime=\"go\"}[30s])) or vector(0)", "legendFormat": "Go GC Frequency", "refId": "C" },
+        { "expr": "sum(rate(jvm_gc_pause_seconds_count{runtime=\"jvm21\"}[30s])) or vector(0)", "legendFormat": "JVM 21 G1GC Frequency", "refId": "D" },
+        { "expr": "sum(rate(promtail_custom_native_gc_pause_seconds_count{container=\"benchmark-native21\"}[30s])) or sum(rate(jvm_gc_pause_seconds_count{runtime=\"native21\"}[30s])) or vector(0)", "legendFormat": "Native 21 GC Frequency", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "cps", "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 } } }
+    },
+    {
+      "id": 23, "type": "stat", "title": "GC Overhead (%) — Process Cumulative Total",
+      "description": "Persentase kumulatif waktu yang dihabiskan khusus untuk pembersihan GC dibandingkan total waktu uptime berjalannya aplikasi sejak booting.",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "(sum(jvm_gc_pause_seconds_sum{runtime=\"jvm\"}) / scalar(process_uptime_seconds{runtime=\"jvm\"})) * 100 or (sum(rate(jvm_gc_pause_seconds_sum{runtime=\"jvm\"}[1m])) * 100) or vector(0)", "legendFormat": "JVM 17 G1GC Cumulative Overhead (%)", "refId": "A" },
+        { "expr": "(sum(promtail_custom_native_gc_pause_seconds_sum{container=\"benchmark-native\"}) / scalar(process_uptime_seconds{runtime=\"native\"})) * 100 or (sum(rate(promtail_custom_native_gc_pause_seconds_sum{container=\"benchmark-native\"}[1m])) * 100) or vector(0)", "legendFormat": "Native 17 Serial GC Cumulative Overhead (%)", "refId": "B" },
+        { "expr": "(sum(jvm_gc_pause_seconds_sum{runtime=\"go\"}) / scalar(process_uptime_seconds{runtime=\"go\"})) * 100 or vector(0)", "legendFormat": "Go GC Cumulative Overhead (%)", "refId": "C" },
+        { "expr": "(sum(jvm_gc_pause_seconds_sum{runtime=\"jvm21\"}) / scalar(process_uptime_seconds{runtime=\"jvm21\"})) * 100 or vector(0)", "legendFormat": "JVM 21 G1GC Cumulative Overhead (%)", "refId": "D" },
+        { "expr": "(sum(promtail_custom_native_gc_pause_seconds_sum{container=\"benchmark-native21\"}) / scalar(process_uptime_seconds{runtime=\"native21\"})) * 100 or (sum(rate(promtail_custom_native_gc_pause_seconds_sum{container=\"benchmark-native21\"}[1m])) * 100) or vector(0)", "legendFormat": "Native 21 GC Cumulative Overhead (%)", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 2 } }
+    },
+    {
+      "id": 24, "type": "timeseries", "title": "Memory Allocation Rate (MB/s)",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(jvm_gc_memory_allocated_bytes_total{runtime=\"jvm\"}[1m])) / 1000000 or vector(0)", "legendFormat": "JVM 17 Alloc Rate", "refId": "A" },
+        { "expr": "sum(rate(jvm_gc_memory_allocated_bytes_total{runtime=\"native\"}[1m])) / 1000000 or (rate(container_memory_working_set_bytes{name=\"benchmark-native\"}[1m]) / 1000000) or vector(0)", "legendFormat": "Native 17 Alloc Rate", "refId": "B" },
+        { "expr": "sum(rate(go_memstats_alloc_bytes_total{runtime=\"go\"}[1m])) / 1000000 or vector(0)", "legendFormat": "Go Alloc Rate", "refId": "C" },
+        { "expr": "sum(rate(jvm_gc_memory_allocated_bytes_total{runtime=\"jvm21\"}[1m])) / 1000000 or vector(0)", "legendFormat": "JVM 21 Alloc Rate", "refId": "D" },
+        { "expr": "sum(rate(jvm_gc_memory_allocated_bytes_total{runtime=\"native21\"}[1m])) / 1000000 or (rate(container_memory_working_set_bytes{name=\"benchmark-native21\"}[1m]) / 1000000) or vector(0)", "legendFormat": "Native 21 Alloc Rate", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "binBps", "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 } } }
+    },
+    {
+      "id": 103, "type": "row", "title": "DB Connection Pool",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 }
+    },
+    {
+      "id": 17, "type": "timeseries", "title": "Active Connections (Max = 20)",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hikaricp_connections_active{runtime=\"jvm\"}", "legendFormat": "JVM 17 Active Conn", "refId": "A" },
+        { "expr": "hikaricp_connections_active{runtime=\"native\"}", "legendFormat": "Native 17 Active Conn", "refId": "B" },
+        { "expr": "hikaricp_connections_active{runtime=\"go\"}", "legendFormat": "Go Active Conn", "refId": "C" },
+        { "expr": "hikaricp_connections_active{runtime=\"jvm21\"}", "legendFormat": "JVM 21 Active Conn", "refId": "D" },
+        { "expr": "hikaricp_connections_active{runtime=\"native21\"}", "legendFormat": "Native 21 Active Conn", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 12, "lineWidth": 2 } } }
+    },
+    {
+      "id": 18, "type": "timeseries", "title": "Pending Connections (Threads Waiting DB)",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hikaricp_connections_pending{runtime=\"jvm\"}", "legendFormat": "JVM 17 Threads Waiting DB", "refId": "A" },
+        { "expr": "hikaricp_connections_pending{runtime=\"native\"}", "legendFormat": "Native 17 Threads Waiting DB", "refId": "B" },
+        { "expr": "hikaricp_connections_pending{runtime=\"go\"}", "legendFormat": "Go Threads Waiting DB", "refId": "C" },
+        { "expr": "hikaricp_connections_pending{runtime=\"jvm21\"}", "legendFormat": "JVM 21 Threads Waiting DB", "refId": "D" },
+        { "expr": "hikaricp_connections_pending{runtime=\"native21\"}", "legendFormat": "Native 21 Threads Waiting DB", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 2 } } }
+    },
+    {
+      "id": 101, "type": "row", "title": "Thread",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 }
+    },
+    {
+      "id": 19, "type": "timeseries", "title": "Live Threads / Goroutines",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "jvm_threads_live_threads{runtime=\"jvm\"}", "legendFormat": "JVM 17 Live Threads", "refId": "A" },
+        { "expr": "jvm_threads_live_threads{runtime=\"native\"}", "legendFormat": "Native 17 Live Threads", "refId": "B" },
+        { "expr": "jvm_threads_live_threads{runtime=\"go\"}", "legendFormat": "Go Goroutines", "refId": "C" },
+        { "expr": "jvm_threads_live_threads{runtime=\"jvm21\"}", "legendFormat": "JVM 21 Live Threads", "refId": "D" },
+        { "expr": "jvm_threads_live_threads{runtime=\"native21\"}", "legendFormat": "Native 21 Live Threads", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 } } }
+    }
+  ]
+}

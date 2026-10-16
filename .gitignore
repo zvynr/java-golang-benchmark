@@ -1,0 +1,29 @@
+# Environment & Secrets
+.env
+.env.local
+
+# Build
+app/target/
+*.class
+*.jar
+*.war
+
+# Results
+results/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Native
+*.so
+*.dylib
+
+# Logs
+*.log

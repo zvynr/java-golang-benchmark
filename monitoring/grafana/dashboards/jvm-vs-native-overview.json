@@ -1,0 +1,99 @@
+{
+  "uid": "jvm-vs-native-overview",
+  "title": "JVM vs Native Benchmark - API Performance & Resources",
+  "tags": ["benchmark", "overview", "api", "resources"],
+  "timezone": "Asia/Jakarta",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1000, "type": "row", "title": "API Performance Behavior",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 1001, "type": "timeseries", "title": "RPS Behavior (Time Series)",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(http_server_requests_seconds_count{runtime=\"jvm\"}[1m]))", "legendFormat": "JVM 17 RPS", "refId": "A" },
+        { "expr": "sum(rate(http_server_requests_seconds_count{runtime=\"native\"}[1m]))", "legendFormat": "Native 17 RPS", "refId": "B" },
+        { "expr": "sum(rate(http_server_requests_seconds_count{runtime=\"go\"}[1m]))", "legendFormat": "Go RPS", "refId": "C" },
+        { "expr": "sum(rate(http_server_requests_seconds_count{runtime=\"jvm21\"}[1m]))", "legendFormat": "JVM 21 RPS", "refId": "D" },
+        { "expr": "sum(rate(http_server_requests_seconds_count{runtime=\"native21\"}[1m]))", "legendFormat": "Native 21 RPS", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 12, "lineWidth": 2 } } }
+    },
+    {
+      "id": 1002, "type": "timeseries", "title": "p95 Latency Behavior (Time Series)",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{runtime=\"jvm\"}[1m])) by (le)) * 1000", "legendFormat": "JVM 17 p95", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{runtime=\"native\"}[1m])) by (le)) * 1000", "legendFormat": "Native 17 p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{runtime=\"go\"}[1m])) by (le)) * 1000", "legendFormat": "Go p95", "refId": "C" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{runtime=\"jvm21\"}[1m])) by (le)) * 1000", "legendFormat": "JVM 21 p95", "refId": "D" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{runtime=\"native21\"}[1m])) by (le)) * 1000", "legendFormat": "Native 21 p95", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "drawStyle": "line", "fillOpacity": 12, "lineWidth": 2 } } }
+    },
+    {
+      "id": 1003, "type": "timeseries", "title": "Error Rate Behavior (%) (Time Series)",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "((sum(rate(http_server_requests_seconds_count{status=~\".*5..*\",runtime=\"jvm\"}[1m])) or vector(0)) / sum(rate(http_server_requests_seconds_count{runtime=\"jvm\"}[1m]))) * 100 or vector(0)", "legendFormat": "JVM 17 Error %", "refId": "A" },
+        { "expr": "((sum(rate(http_server_requests_seconds_count{status=~\".*5..*\",runtime=\"native\"}[1m])) or vector(0)) / sum(rate(http_server_requests_seconds_count{runtime=\"native\"}[1m]))) * 100 or vector(0)", "legendFormat": "Native 17 Error %", "refId": "B" },
+        { "expr": "((sum(rate(http_server_requests_seconds_count{status=~\".*5..*\",runtime=\"go\"}[1m])) or vector(0)) / sum(rate(http_server_requests_seconds_count{runtime=\"go\"}[1m]))) * 100 or vector(0)", "legendFormat": "Go Error %", "refId": "C" },
+        { "expr": "((sum(rate(http_server_requests_seconds_count{status=~\".*5..*\",runtime=\"jvm21\"}[1m])) or vector(0)) / sum(rate(http_server_requests_seconds_count{runtime=\"jvm21\"}[1m]))) * 100 or vector(0)", "legendFormat": "JVM 21 Error %", "refId": "D" },
+        { "expr": "((sum(rate(http_server_requests_seconds_count{status=~\".*5..*\",runtime=\"native21\"}[1m])) or vector(0)) / sum(rate(http_server_requests_seconds_count{runtime=\"native21\"}[1m]))) * 100 or vector(0)", "legendFormat": "Native 21 Error %", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 2 } } }
+    },
+    {
+      "id": 100, "type": "row", "title": "Container Resource",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 }
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "CPU Usage (Cores)",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(container_cpu_usage_seconds_total{name=\"benchmark-jvm\"}[1m])", "legendFormat": "JVM 17", "refId": "A" },
+        { "expr": "rate(container_cpu_usage_seconds_total{name=\"benchmark-native\"}[1m])", "legendFormat": "Native 17", "refId": "B" },
+        { "expr": "rate(container_cpu_usage_seconds_total{name=\"benchmark-go\"}[1m])", "legendFormat": "Go", "refId": "C" },
+        { "expr": "rate(container_cpu_usage_seconds_total{name=\"benchmark-jvm21\"}[1m])", "legendFormat": "JVM 21", "refId": "D" },
+        { "expr": "rate(container_cpu_usage_seconds_total{name=\"benchmark-native21\"}[1m])", "legendFormat": "Native 21", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "cores", "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 } } }
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "CPU Throttling Rate (s/s)",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(container_cpu_cfs_throttled_seconds_total{name=\"benchmark-jvm\"}[1m])", "legendFormat": "JVM 17 Throttled", "refId": "A" },
+        { "expr": "rate(container_cpu_cfs_throttled_seconds_total{name=\"benchmark-native\"}[1m])", "legendFormat": "Native 17 Throttled", "refId": "B" },
+        { "expr": "rate(container_cpu_cfs_throttled_seconds_total{name=\"benchmark-go\"}[1m])", "legendFormat": "Go Throttled", "refId": "C" },
+        { "expr": "rate(container_cpu_cfs_throttled_seconds_total{name=\"benchmark-jvm21\"}[1m])", "legendFormat": "JVM 21 Throttled", "refId": "D" },
+        { "expr": "rate(container_cpu_cfs_throttled_seconds_total{name=\"benchmark-native21\"}[1m])", "legendFormat": "Native 21 Throttled", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 2 } } }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Memory Working Set",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "container_memory_working_set_bytes{name=\"benchmark-jvm\"} / 1000000", "legendFormat": "JVM 17 Working Set", "refId": "A" },
+        { "expr": "container_memory_working_set_bytes{name=\"benchmark-native\"} / 1000000", "legendFormat": "Native 17 Working Set", "refId": "B" },
+        { "expr": "container_memory_working_set_bytes{name=\"benchmark-go\"} / 1000000", "legendFormat": "Go Working Set", "refId": "C" },
+        { "expr": "container_memory_working_set_bytes{name=\"benchmark-jvm21\"} / 1000000", "legendFormat": "JVM 21 Working Set", "refId": "D" },
+        { "expr": "container_memory_working_set_bytes{name=\"benchmark-native21\"} / 1000000", "legendFormat": "Native 21 Working Set", "refId": "E" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "megabytes", "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 } } }
+    }
+  ]
+}

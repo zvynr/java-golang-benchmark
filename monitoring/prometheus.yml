@@ -1,0 +1,49 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: "benchmark-jvm"
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app-jvm:8080"]
+        labels:
+          runtime: jvm
+
+  - job_name: "benchmark-native"
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app-native:8080"]
+        labels:
+          runtime: native
+
+  - job_name: "benchmark-go"
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app-go:8080"]
+        labels:
+          runtime: go
+
+  - job_name: "benchmark-jvm21"
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app-jvm21:8080"]
+        labels:
+          runtime: jvm21
+
+  - job_name: "benchmark-native21"
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app-native21:8080"]
+        labels:
+          runtime: native21
+
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  - job_name: "promtail"
+    static_configs:
+      - targets: ["promtail:9080"]
+        labels:
+          runtime: native
